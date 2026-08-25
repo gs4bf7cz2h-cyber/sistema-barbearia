@@ -22,7 +22,7 @@ Depois abra `http://localhost:5173` no navegador.
 
 As configurações principais ficam em `src/store.js`, no objeto `CONFIG`:
 
-- `businessPhone`: telefone da barbearia para o WhatsApp, em formato internacional sem `+`, espaços ou traços. Exemplo: `5511999999999`.
+- `businessPhone`: telefone da barbearia para o WhatsApp, em formato internacional sem `+`, espaços ou traços. Exemplo: `5511999999999`. Esse é o principal local identificado para você preencher antes de publicar.
 - `slotStart`: início dos horários disponíveis.
 - `slotEnd`: fim do expediente.
 - `slotMinutes`: intervalo entre horários.
@@ -30,7 +30,7 @@ As configurações principais ficam em `src/store.js`, no objeto `CONFIG`:
 
 ## Como alterar serviços e preços
 
-Pelo sistema, acesse a área **Administração > Serviços**, cadastre um novo serviço ou clique em **Editar** em um serviço existente.
+Pelo sistema, acesse a área **Administração > Serviços**, cadastre um novo serviço, clique em **Editar** em um serviço existente ou use **Remover** quando não houver agendamentos ativos vinculados ao serviço.
 
 Os serviços iniciais estão em `src/store.js`:
 
