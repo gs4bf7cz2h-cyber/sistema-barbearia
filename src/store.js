@@ -13,7 +13,75 @@ export const defaultServices = [
 ];
 
 export function createInitialState() {
-  return { services: [...defaultServices], appointments: [], blocks: [] };
+  return { services: defaultServices.map((service) => Object.assign({}, service)), appointments: [], blocks: [] };
+}
+
+let fallbackIdCounter = 0;
+
+function createId() {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+  } catch (error) {
+    // Older browsers and restricted contexts can still create local records.
+  }
+  fallbackIdCounter += 1;
+  return `local-${Date.now().toString(36)}-${fallbackIdCounter.toString(36)}`;
+}
+
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function text(value, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
+function recordId(value) {
+  return typeof value === "string" && value ? value : createId();
+}
+
+function priceValue(value) {
+  return (typeof value === "number" || (typeof value === "string" && value.trim() !== "")) &&
+    Number.isFinite(Number(value)) ? Number(value) : 0;
+}
+
+function normalizeState(value) {
+  const initial = createInitialState();
+  if (!isRecord(value)) return initial;
+
+  const services = Array.isArray(value.services) ? value.services.filter(isRecord).map((service) =>
+    Object.assign({}, service, {
+      id: recordId(service.id),
+      name: text(service.name),
+      price: priceValue(service.price),
+    })) : initial.services;
+
+  const appointments = Array.isArray(value.appointments) ? value.appointments.filter(isRecord).map((appointment) => {
+    const service = services.find((item) => item.id === appointment.serviceId);
+    return Object.assign({}, appointment, {
+      id: recordId(appointment.id),
+      serviceId: text(appointment.serviceId),
+      serviceName: text(appointment.serviceName, service ? service.name : ""),
+      price: priceValue(appointment.price),
+      date: text(appointment.date),
+      time: text(appointment.time),
+      name: text(appointment.name),
+      phone: text(appointment.phone),
+      status: text(appointment.status, "confirmado"),
+    });
+  }) : initial.appointments;
+
+  const blocks = Array.isArray(value.blocks) ? value.blocks.filter(isRecord).map((block) =>
+    Object.assign({}, block, {
+      id: recordId(block.id),
+      date: text(block.date),
+      time: text(block.time),
+      reason: text(block.reason),
+    })) : initial.blocks;
+
+  return Object.assign({}, value, { services, appointments, blocks });
 }
 
 export function createSlots(cfg = CONFIG) {
@@ -32,16 +100,30 @@ export function createSlots(cfg = CONFIG) {
   return slots;
 }
 
-export function loadState(storage = localStorage) {
+export function loadState(storage, onError) {
   try {
-    return JSON.parse(storage.getItem(CONFIG.storageKey)) || createInitialState();
-  } catch {
+    const target = storage === undefined ? localStorage : storage;
+    return normalizeState(JSON.parse(target.getItem(CONFIG.storageKey)));
+  } catch (error) {
+    if (typeof onError === "function") {
+      try {
+        onError(error);
+      } catch (callbackError) {
+        // A warning handler must not prevent the page from opening.
+      }
+    }
     return createInitialState();
   }
 }
 
-export function saveState(state, storage = localStorage) {
-  storage.setItem(CONFIG.storageKey, JSON.stringify(state));
+export function saveState(state, storage) {
+  try {
+    const target = storage === undefined ? localStorage : storage;
+    target.setItem(CONFIG.storageKey, JSON.stringify(state));
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 export function isBlocked(state, date, time) {
@@ -71,7 +153,7 @@ export function addAppointment(state, input) {
   if (!service) throw new Error("Serviço inválido.");
 
   const appt = {
-    id: crypto.randomUUID?.() || String(Date.now()),
+    id: createId(),
     serviceId: service.id,
     serviceName: service.name,
     price: service.price,
@@ -99,8 +181,8 @@ export function updateAppointment(state, id, changes) {
   if (!appointment) throw new Error("Agendamento não encontrado.");
   if (appointment.status === "cancelado") throw new Error("Agendamento cancelado não pode ser alterado.");
 
-  const date = changes.date ?? appointment.date;
-  const time = changes.time ?? appointment.time;
+  const date = changes.date === null || changes.date === undefined ? appointment.date : changes.date;
+  const time = changes.time === null || changes.time === undefined ? appointment.time : changes.time;
 
   if (isBlocked(state, date, time)) throw new Error("Horário bloqueado.");
   if (isOccupied(state, date, time, id)) throw new Error("Horário já ocupado.");
@@ -154,7 +236,7 @@ export function addBlock(state, { date, time = "", reason = "" }) {
   if (state.blocks.some((b) => b.date === date && b.time === time)) throw new Error("Esse bloqueio já existe.");
 
   const block = {
-    id: crypto.randomUUID?.() || String(Date.now()),
+    id: createId(),
     date,
     time,
     reason: reason.trim(),

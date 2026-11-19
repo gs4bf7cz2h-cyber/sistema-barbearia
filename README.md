@@ -8,6 +8,7 @@ Sistema funcional de agendamento para barbearia, feito com HTML, CSS e JavaScrip
 - `src/styles.css`: visual responsivo e mobile-first.
 - `src/store.js`: regras de negócio, serviços, horários, bloqueios, conflitos e WhatsApp.
 - `src/app.js`: integração da interface com as regras e persistência local.
+- `src/bootstrap.js`: inicialização com mensagem de recuperação se os módulos não carregarem.
 - `node --test`: testes automatizados das funções principais.
 
 ## Como executar
@@ -43,3 +44,13 @@ Os serviços iniciais estão em `src/store.js`:
 Este projeto é estático. Pode ser publicado em qualquer hospedagem de arquivos estáticos, como Netlify, Vercel, GitHub Pages ou no próprio servidor da barbearia. Envie `index.html` e a pasta `src/` para a hospedagem.
 
 > Observação: como os dados ficam no navegador, para uso com vários dispositivos ao mesmo tempo será necessário trocar o `localStorage` por um banco de dados/API. A estrutura de regras em `src/store.js` foi separada para facilitar essa evolução.
+
+## Proteções de carregamento
+
+- A leitura e a gravação dos dados tratam armazenamento indisponível, bloqueado ou sem espaço. A interface continua acessível e avisa quando alterações ficam apenas na aba atual.
+- Dados salvos são validados antes de alimentar serviços, horários e agendamentos. A leitura não sobrescreve o conteúdo original automaticamente.
+- Um erro ao carregar os módulos mostra uma mensagem com opção de tentar novamente; com JavaScript desativado, há uma orientação no HTML.
+- A confirmação informa quando não foi possível salvar um agendamento, evitando apresentar uma gravação malsucedida como concluída.
+- O código do navegador evita `?.` e `??`, e a geração de identificadores funciona sem `crypto.randomUUID`. A sintaxe foi mantida compatível com Safari/iOS 12; a validação automatizada em Chromium não substitui teste em um iPhone real.
+
+O diagnóstico e os cenários de regressão estão em [docs/tela-branca.md](docs/tela-branca.md).
